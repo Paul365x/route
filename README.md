@@ -16,6 +16,8 @@ With columns for:
 
 Need to update constants at the top of the sheet to locate each of these. This sheet is referred to as the work sheet below.
 
+you will need to get an api key from https://geocode.maps.co and add it to the callGeocode function.
+
 Referring to the "Work" Sheet:
 
 1) create a list of locations/towns in column A
