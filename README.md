@@ -1,2 +1,39 @@
 # route
 google app script to do geocoding from location/town names in Australia to gpx
+
+Need to create a google sheets with headings and locations for:
+1) Route Name
+2) GPX Route
+
+With columns for:
+
+1) location/town
+2) state
+3) name
+4) lat
+5) lon
+6) point
+
+Need to update constants at the top of the sheet to locate each of these. This sheet is referred to as the work sheet below.
+
+Referring to the "Work" Sheet:
+
+1) create a list of locations/towns in column A
+2) list the state the town in column 2.
+3) Under the "GPX" menu press "Geocode". This will populate the name, lat and lon columns. 
+4) You can fill any empy/failed to find by hand. The name is optional, if left blank it will use the first column
+5) Under the "GPX" menu press "Points". This will populate the points column ie the individual waypoint xml
+6) If you want the route to be named, fill in the route name in the second column at the top.
+7) Under the "GPX" menu press "Route" and the GPX route cell will be populated.
+8) Copy and paste the GPX route into a text file and save with the extension ".gpx"
+9) import into your navigation software.
+
+Other menu commands:
+
+Clear Route will clear just the GPX route cell
+Clear All will clear everything except the headings
+
+GPS Coordinates Precision and type
+
+You need to use decimal or aka WGS84 format GPS coordinates eg -17.795529	145.3121906
+the less decimal points the more likely you will have trouble finding the specific spot. If it is a town then probably not an issue. A geocache then try for six or over.
