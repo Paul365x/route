@@ -14,7 +14,7 @@ const latCol = "D";       // generated latitude column
 const lonCol = "E";       // generated longitude column
 const ptCol = "F";        // generated rtept column
 const nameLoc = "B1";     // cell for name of route
-const routeLoc = "B2";    // generated route column
+const routeLoc = "B2";    // generated route cell
 const colStart = 6;       // row where the location data starts
 
 // sets up our custom menu
