@@ -1,0 +1,129 @@
+*
+** Route
+**
+** Spreadsheet: contains a route name, location for route xml, locations for town/location, state, display_name, lat, lon and rtept
+** locations for each defined in the constants
+** takes this information and first geocodes the locations, then creates gpx rtept xml and finally compiles a complete gpx xml route.
+**
+** 
+*/
+const locCol = "A";       // location name column
+const stateCol = "B";     // state name column
+const nameCol = "C";      // generated name column
+const latCol = "D";       // generated latitude column
+const lonCol = "E";       // generated longitude column
+const ptCol = "F";        // generated rtept column
+const nameLoc = "B1";     // cell for name of route
+const routeLoc = "B2";    // generated route column
+const colStart = 6;       // row where the location data starts
+
+// sets up our custom menu
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  // Or DocumentApp or FormApp.
+  ui.createMenu('GPX' )
+      .addItem('Geocode', 'GEOCODE' )
+      .addItem('Points', 'POINTS' )
+      .addItem("Route","ROUTE")   
+      .addItem("Clear Route","CLEARRTE")
+      .addItem("Clear All","CLEARALL")
+      .addToUi();  
+}
+
+// clears the generated route
+function CLEARRTE() {
+  SpreadsheetApp.getActiveSpreadsheet().getRange(routeLoc + ":" + routeLoc).clearContent();
+}
+
+// clears all except for headings
+function CLEARALL() {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  ss.getRange(locCol + colStart + ":" + ptCol).clearContent();
+  ss.getRange(nameLoc + ":" + nameLoc).clearContent();
+  CLEARRTE();
+}
+
+// generates a gpx route file from rtept and name data
+function ROUTE() {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let src = ss.getRange(ptCol + colStart + ":" + ptCol).getValues();
+  let route = ss.getRange(routeLoc + ":" + routeLoc)
+  let name = ss.getRange(nameLoc + ":" + nameLoc).getValue();
+  let xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<gpx version=\"1.1\" creator=\"Route\" xmlns=\"http://www.topografix.com/GPX/1/1\">\r\n";
+  if (name != "") {
+      xml = xml + "\t<rte>\r\n\t\t<name>" + name + "</name>\r\n";
+  }
+  src.forEach(function(row, index) {
+    if (row[0] != "" ) {
+        xml = xml + "\t\t" + row[0] + "\r\n";
+    }
+  })
+  xml = xml + "\t</rte>\r\n</gpx>\r\n";
+  route.setValue(xml);
+}
+
+// generates rtept xml for this location
+function POINTS() {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let r = ss.getRange(locCol + colStart + ":" + stateCol)
+  let maxLoc = r.getNextDataCell(SpreadsheetApp.Direction.DOWN).getLastRow();
+  let targets = ss.getRange(locCol + colStart + ":" + locCol + maxLoc).getValues();
+  
+  targets.forEach(function(row, index) {
+    let town = row[0].toString();
+    let level = index + colStart;
+    let name = ss.getRange(nameCol + level + ":" + nameCol + level ).getValue();
+    if (name === "" ) {
+      name = ss.getRange(locCol + level + ":" + locCol + level ).getValue();
+    }
+    let lat = ss.getRange(latCol + level + ":" + latCol + level ).getValue();
+    let lon = ss.getRange(lonCol + level + ":" + lonCol + level ).getValue();
+    if ( lat != "" && lon != "" ) {
+        let target = ss.getRange(ptCol + level + ":" + ptCol + level)
+        target.setValue("<rtept> lat=\"" + lat + "\" lon=\"" + lon +"\"> <name>" + name +"</name></rtept>")
+    }
+  });
+
+}
+
+// geocodes all locations it can find
+function GEOCODE() {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let r = ss.getRange(locCol + colStart + ":" + stateCol)
+  let maxLoc = r.getNextDataCell(SpreadsheetApp.Direction.DOWN).getLastRow();
+  let targets = ss.getRange(locCol + colStart + ":" + locCol + maxLoc).getValues();
+  
+  targets.forEach(function(row, index) {
+    let town = row[0].toString();
+    let level = index + colStart;
+    let state = ss.getRange(stateCol + level + ":" + stateCol + level ).getValue();
+    var loc = callGeo(town, state);
+    if ( Object.keys(loc).length > 0 ) {
+        ss.getRange(nameCol + level + ":" + nameCol + level).setValue(loc["display_name"]);
+        ss.getRange(latCol + level + ":" + latCol + level).setValue(loc["lat"]);
+        ss.getRange(lonCol + level + ":" + lonCol + level).setValue(loc["lon"]);
+    }
+  });
+  
+  
+}
+
+// geocodes a single location. If it fails leave it blank
+function callGeo(town, state) {  
+   var url = "https://geocode.maps.co/search?q="+town+"+"+state+"+AU&api_key=<add your own key>"
+   var loc = {};
+  try {
+    var response = UrlFetchApp.fetch(url);
+    var jsonText = response.getContentText();
+    var data = JSON.parse(jsonText);
+   
+    loc["display_name"] = data[0]["display_name"];
+    loc["lat"] = data[0]["lat"];
+    loc["lon"] = data[0]["lon"];
+    return loc;
+  
+  } catch (e) {
+    return loc;
+  }
+}
+
