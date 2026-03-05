@@ -1,5 +1,5 @@
 # route
-google app script to do geocoding from location/town names in Australia to gpx
+google app script to do geocoding from location/town names in Australia to gpx. Just copy into the sheet app editor.
 
 Need to create a google sheets with headings and locations for:
 1) Route Name
@@ -14,9 +14,19 @@ With columns for:
 5) lon
 6) point
 
-Need to update constants at the top of the sheet to locate each of these. This sheet is referred to as the work sheet below.
+ie
+|||
+|---|---|
+|Route Name|QLD Trip|
+|GPX Route|*generated*|
 
-you will need to get an api key from https://geocode.maps.co and add it to the callGeocode function.
+|location|state|name|lat|lon|point|
+|--------|-----|----|---|---|-----|
+|Longreach|QLD|*generated*|*generated*|*generated*|*generated*|
+
+Need to update constants at the top of the script to locate each of these. This sheet is referred to as the work sheet below.
+
+you will need to get an api key from https://geocode.maps.co and add it to the callGeo function.
 
 Referring to the "Work" Sheet:
 
