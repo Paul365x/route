@@ -150,10 +150,10 @@ function SAVE() {
   let parents = file.getParents();
   if (parents.hasNext()) {
     let folder = parents.next();
-    folder.createFile(name, route);    
+    folder.createFile(name, route,"application/gpx+xml");    
   } else {
     // we are running in root so put it there
-    DriveApp.createFile(name, route);
+    DriveApp.createFile(name, route, "application/gpx+xml");
   }
 }
 
