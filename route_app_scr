@@ -14,20 +14,71 @@ const latCol = "D";       // generated latitude column
 const lonCol = "E";       // generated longitude column
 const ptCol = "F";        // generated rtept column
 const nameLoc = "B1";     // cell for name of route
-const routeLoc = "B2";    // generated route cell
+const routeLoc = "B2";    // generated route column
 const colStart = 6;       // row where the location data starts
+
+// route type
+const routeType = "track"; // valid: route (RTE), waypoint (WPT), track (TRK)
+
+// route tags
+const startRTE = "<rte>";
+const endRTE = "</rte>";
+const ptStartRTE = "<rtept";
+const ptEndRTE = "</rtept>";
+
+// waypoint tags
+const ptStartWPT = "<wpt";
+const ptEndWPT = "</wpt>";
+
+// track tags
+const startTRK = "<trk>";
+const endTRK = "</trk>";
+const segStartTRK = "<trkseg>";
+const segEndTRK = "</trkseg>";
+const ptStartTRK = "<trkpt";
+const ptEndTRK = "</trkpt>";
 
 // sets up our custom menu
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   // Or DocumentApp or FormApp.
   ui.createMenu('GPX' )
+      .addItem('Compact', 'COMPACT' )
       .addItem('Geocode', 'GEOCODE' )
       .addItem('Points', 'POINTS' )
-      .addItem("Route","ROUTE")   
+      .addItem("Route","ROUTE")  
+      .addItem("Save","SAVE")   
+      .addSeparator()
+      .addItem("Clear Points","CLEARPTS")
       .addItem("Clear Route","CLEARRTE")
+      .addItem("Clear Generated","CLEARGEN")
       .addItem("Clear All","CLEARALL")
       .addToUi();  
+}
+
+function COMPACT() {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let lrow =ss.getLastRow();
+  for (var i = lrow; i > colStart; i--) {
+    let test = ss.getRange(locCol + i + ":" + locCol + i).getValue();
+  //  SpreadsheetApp.getUi() // Or DocumentApp or FormApp.
+//     .alert(test);
+    if (test === "") {
+      ss.deleteRow(i);
+    }
+  }
+}
+
+
+// clears the generated information
+function CLEARGEN() {
+  SpreadsheetApp.getActiveSpreadsheet().getRange(nameCol + colStart + ":" + ptCol).clearContent();
+  CLEARRTE();
+}
+
+// clears the generated points
+function CLEARPTS() {
+  SpreadsheetApp.getActiveSpreadsheet().getRange(ptCol+ colStart + ":" + ptCol).clearContent();
 }
 
 // clears the generated route
@@ -43,22 +94,103 @@ function CLEARALL() {
   CLEARRTE();
 }
 
+
+function xmlHeader() {
+  let xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n";
+  xml = xml + "<gpx version=\"1.1\" creator=\"Paul's Route\"\r\n";
+  xml = xml + "xmlns=\"http://www.topografix.com/GPX/1/1\"\r\n";
+  xml = xml + "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\r\n";
+  xml = xml + "xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 ";
+  xml = xml + "http://www.topografix.com/GPX/1/1/gpx.xsd ";
+  xml = xml + "http://www.topografix.com/GPX/gpx_style/0/2 "
+  xml = xml + "http://www.topografix.com/GPX/gpx_style/0/2/gpx_style.xsd\"\r\n";
+  xml = xml + "xmlns:gpx_style=\"http://www.topografix.com/GPX/gpx_style/0/2\">\r\n";
+  return xml;
+}
+
+function setTags() {
+  var tags = {};
+  switch (routeType) {
+    case "track":
+      tags["start"] = startTRK;
+      tags["end"] = endTRK;
+      tags["segstart"] = segStartTRK;
+      tags["segend"] = segEndTRK;
+      tags["ptstart"] = ptStartTRK;
+      tags["ptend"] = ptEndTRK;
+      break;
+    case "waypoint": 
+      tags["ptstart"] = ptStartWPT;
+      tags["ptend"] = ptEndWPT;
+      break;
+    case "route":
+    // drop through to default
+    default: 
+      tags["start"] = startRTE;
+      tags["end"] = endRTE;
+      tags["ptstart"] = ptStartRTE;
+      tags["ptend"] = ptEndRTE;
+      break;
+  }
+  return tags;
+}
+
+function SAVE() {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let route = ss.getRange(routeLoc + ":" + routeLoc).getValue().toString();
+
+  // setup our file name
+  let name = ss.getRange(nameLoc + ":" + nameLoc).getValue().toString();
+  name = name.replaceAll(' ','_');
+  name = name + ".gpx";
+
+  // get current folder and write the file
+  let fileId = ss.getId();
+  let file = DriveApp.getFileById(fileId);
+  let parents = file.getParents();
+  if (parents.hasNext()) {
+    let folder = parents.next();
+    folder.createFile(name, route);    
+  } else {
+    // we are running in root so put it there
+    DriveApp.createFile(name, route);
+  }
+}
+
 // generates a gpx route file from rtept and name data
 function ROUTE() {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
   let src = ss.getRange(ptCol + colStart + ":" + ptCol).getValues();
   let route = ss.getRange(routeLoc + ":" + routeLoc)
   let name = ss.getRange(nameLoc + ":" + nameLoc).getValue();
-  let xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<gpx version=\"1.1\" creator=\"Route\" xmlns=\"http://www.topografix.com/GPX/1/1\">\r\n";
-  if (name != "") {
-      xml = xml + "\t<rte>\r\n\t\t<name>" + name + "</name>\r\n";
+  let xml = xmlHeader();
+  let tags = setTags();
+
+  if ("start" in tags) {
+      xml = xml + "\t" + tags["start"];
+      if ("segstart" in tags) {
+        xml = xml + tags["segstart"];
+      } 
+      xml = xml + "\r\n";
   }
+
+  if (name != "") {
+      xml = xml + "\t\t<name>" + name + "</name>\r\n";
+  }
+
   src.forEach(function(row, index) {
     if (row[0] != "" ) {
         xml = xml + "\t\t" + row[0] + "\r\n";
     }
-  })
-  xml = xml + "\t</rte>\r\n</gpx>\r\n";
+  });
+
+  if ("end" in tags) {
+    if ("segend" in tags) {
+      xml = xml + tags["segend"];
+    } 
+    xml = xml + "\t" + tags["end"] + "\r\n";
+  }
+  xml = xml + "</gpx>\r\n";
   route.setValue(xml);
 }
 
@@ -66,9 +198,9 @@ function ROUTE() {
 function POINTS() {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
   let r = ss.getRange(locCol + colStart + ":" + stateCol)
-  let maxLoc = r.getNextDataCell(SpreadsheetApp.Direction.DOWN).getLastRow();
-  let targets = ss.getRange(locCol + colStart + ":" + locCol + maxLoc).getValues();
-  
+  let targets = ss.getRange(locCol + colStart + ":" + locCol).getValues();
+  let tags = setTags();
+
   targets.forEach(function(row, index) {
     let town = row[0].toString();
     let level = index + colStart;
@@ -80,7 +212,7 @@ function POINTS() {
     let lon = ss.getRange(lonCol + level + ":" + lonCol + level ).getValue();
     if ( lat != "" && lon != "" ) {
         let target = ss.getRange(ptCol + level + ":" + ptCol + level)
-        target.setValue("<rtept> lat=\"" + lat + "\" lon=\"" + lon +"\"> <name>" + name +"</name></rtept>")
+        target.setValue(tags["ptstart"] + " lat=\"" + lat + "\" lon=\"" + lon +"\"> <name>" + name +"</name>" + tags["ptend"]);
     }
   });
 
@@ -90,8 +222,7 @@ function POINTS() {
 function GEOCODE() {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
   let r = ss.getRange(locCol + colStart + ":" + stateCol)
-  let maxLoc = r.getNextDataCell(SpreadsheetApp.Direction.DOWN).getLastRow();
-  let targets = ss.getRange(locCol + colStart + ":" + locCol + maxLoc).getValues();
+  let targets = ss.getRange(locCol + colStart + ":" + locCol).getValues();
   
   targets.forEach(function(row, index) {
     let town = row[0].toString();
@@ -110,7 +241,7 @@ function GEOCODE() {
 
 // geocodes a single location. If it fails leave it blank
 function callGeo(town, state) {  
-   var url = "https://geocode.maps.co/search?q="+town+"+"+state+"+AU&api_key=<add your own key>"
+   var url = "https://geocode.maps.co/search?q="+town+"+"+state+"+AU&api_key=<your key here>"
    var loc = {};
   try {
     var response = UrlFetchApp.fetch(url);
@@ -126,4 +257,5 @@ function callGeo(town, state) {
     return loc;
   }
 }
+
 

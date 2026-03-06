@@ -27,22 +27,25 @@ ie
 Need to update constants at the top of the script to locate each of these. This sheet is referred to as the work sheet below.
 
 you will need to get an api key from https://geocode.maps.co and add it to the callGeo function.
+you will need to set routeType to select the type of gpx route you want. My nav software for example appears not to support RTE routes.
 
 Referring to the "Work" Sheet:
 
 1) create a list of locations/towns in column A
 2) list the state the town in column 2.
 3) Under the "GPX" menu press "Geocode". This will populate the name, lat and lon columns. 
-4) You can fill any empy/failed to find by hand. The name is optional, if left blank it will use the first column
+4) You can fill any empty/failed to find by hand. The name is optional, if left blank it will use the first column
 5) Under the "GPX" menu press "Points". This will populate the points column ie the individual waypoint xml
-6) If you want the route to be named, fill in the route name in the second column at the top.
+6) If you want the route to be named, fill in the route name in the second column at the top. this is also required to save a file
 7) Under the "GPX" menu press "Route" and the GPX route cell will be populated.
-8) Copy and paste the GPX route into a text file and save with the extension ".gpx"
+8) check you have a name set and press the save button. This will create a gpx file in the same folder on drive
 9) import into your navigation software.
 
 Other menu commands:
 
+Clear Points will remove all generated points
 Clear Route will clear just the GPX route cell
+Clear Generated will remove all the geocoded values, points and route.
 Clear All will clear everything except the headings
 
 GPS Coordinates Precision and type
