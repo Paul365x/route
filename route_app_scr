@@ -68,6 +68,46 @@ function onOpen() {
   doDropdown();
 }
 
+// adds a dropdown to pin column
+function onEdit(e) {
+  let chgRange = e.range;
+   
+  let col = String.fromCharCode(64 + chgRange.getColumn());
+  if (col != locCol) {
+     return;
+  }
+  let row = chgRange.getRow();
+  let value = chgRange.getValue();
+  let ss = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  let ssName = ss.getName();
+ // SpreadsheetApp.getUi().alert(ssName);
+  if (ssName != "Work") {
+    return;
+  }
+  var cell = ss.getRange(pinCol + row + ":" + pinCol + row);  
+
+  if (value === "" || value === null) {  
+    cell.clearContent();
+    cell.clearDataValidations();
+    return;
+  } else {
+    if (cell.getDataValidation() === null) {
+      var rule = SpreadsheetApp.newDataValidation().requireValueInList(["None"].concat(pinSet), true).build();
+      cell.setDataValidation(rule);  
+      cell.setValue("None");
+      return;
+    }
+  }
+}
+
+// adds a dropdown allowing selection of point type
+function doDropdown( ) {
+  var cell = SpreadshreetApp.getActiveSpreadsheet().getRange(typeLoc + ":" + typeLoc);
+  var rule = SpreadsheetApp.newDataValidation().requireValueInList(routeSet, true).build();
+  cell.setDataValidation(rule);  
+  cell.setValue("route");
+}
+
 function CLEARPINS() {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
   let rgPin = ss.getRange(pinCol + colStart + ":" + pinCol);
@@ -89,39 +129,6 @@ function CLEARPINS() {
     
   }
 
-}
-
-// adds a dropdown to pin column
-function onEdit(e) {
-  let chgRange = e.range;
-   
-  let col = String.fromCharCode(64 + chgRange.getColumn());
-  if (col != locCol) {
-     return;
-  }
-  let row = chgRange.getRow();
-  let value = chgRange.getValue();
-  
-  var cell = SpreadsheetApp.getActiveSpreadsheet().getRange(pinCol + row + ":" + pinCol + row);  
-  if (value === "" || value === null) {  
-    cell.clearContent();
-    cell.clearDataValidations();
-    return;
-  } else {
-    if (cell.getDataValidation() === null) {
-      var rule = SpreadsheetApp.newDataValidation().requireValueInList(["None"].concat(pinSet), true).build();
-      cell.setDataValidation(rule);  
-      cell.setValue("None");
-      return;
-    }
-  }
-}
-// adds a dropdown allowing selection of point type
-function doDropdown( ) {
-  var cell = SpreadshreetApp.getActiveSpreadsheet().getRange(typeLoc + ":" + typeLoc);
-  var rule = SpreadsheetApp.newDataValidation().requireValueInList(routeSet, true).build();
-  cell.setDataValidation(rule);  
-  cell.setValue("route");
 }
 
 function COMPACT() {
@@ -266,8 +273,9 @@ function ROUTE() {
 // generates rtept xml for this location
 function POINTS() {
   let ss = SpreadsheetApp.getActiveSpreadsheet();
-  let r = ss.getRange(locCol + colStart + ":" + stateCol)
-  let targets = ss.getRange(locCol + colStart + ":" + locCol).getValues();
+  let lastRow = ss.getActiveSheet().getLastRow();
+  let r = ss.getRange(locCol + colStart + ":" + stateCol + lastRow)
+  let targets = ss.getRange(locCol + colStart + ":" + locCol + lastRow).getValues();
   let tags = setTags();
 
   targets.forEach(function(row, index) {
@@ -324,7 +332,7 @@ function GEOCODE() {
 
 // geocodes a single location. If it fails leave it blank
 function callGeo(town, state) {  
-   var url = "https://geocode.maps.co/search?q="+town+"+"+state+"+AU&api_key=<your key here>"
+   var url = "https://geocode.maps.co/search?q="+town+"+"+state+"+AU&api_key=<yourkeyhere>"
    var loc = {};
   try {
     var response = UrlFetchApp.fetch(url);
