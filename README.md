@@ -52,3 +52,5 @@ GPS Coordinates Precision and type
 
 You need to use decimal or aka WGS84 format GPS coordinates eg -17.795529	145.3121906
 the less decimal points the more likely you will have trouble finding the specific spot. If it is a town then probably not an issue. A geocache then try for six or over.
+
+

@@ -9,16 +9,26 @@
 */
 const locCol = "A";       // location name column
 const stateCol = "B";     // state name column
-const nameCol = "C";      // generated name column
-const latCol = "D";       // generated latitude column
-const lonCol = "E";       // generated longitude column
-const ptCol = "F";        // generated rtept column
-const nameLoc = "B1";     // cell for name of route
-const routeLoc = "B2";    // generated route column
-const colStart = 6;       // row where the location data starts
+const nameCol = "C";      // column for individualised names
+const pinCol = "D";       // column to select pin type
+const addrCol = "E";      // generated address column
+const latCol = "F";       // generated latitude column
+const lonCol = "G";       // generated longitude column
+const ptCol = "H";        // generated rtept column
+const typeLoc = "B1";     // location of the route type
+const nameLoc = "B2";     // cell for name of route
+const routeLoc = "B3";    // generated route column
+const colStart = 7;       // row where the location data starts
 
 // route type
-const routeType = "track"; // valid: route (RTE), waypoint (WPT), track (TRK)
+const routeSet = ["route", "waypoint", "track"];   // valid: route (RTE), waypoint (WPT), track (TRK)
+
+// pin selection
+const pinSet = [
+                "Circle, Blue","Circle, Green", "Circle, Red",
+                "Diamond, Blue","Diamond, Green", "Diamond, Red",
+                "Flag, Blue","Flag, Green", "Flag, Red",
+                "Square, Blue","Square, Green", "Square, Red"  ];
 
 // route tags
 const startRTE = "<rte>";
@@ -49,11 +59,69 @@ function onOpen() {
       .addItem("Route","ROUTE")  
       .addItem("Save","SAVE")   
       .addSeparator()
+      .addItem("Clear Pins", "CLEARPINS")
       .addItem("Clear Points","CLEARPTS")
       .addItem("Clear Route","CLEARRTE")
       .addItem("Clear Generated","CLEARGEN")
       .addItem("Clear All","CLEARALL")
       .addToUi();  
+  doDropdown();
+}
+
+function CLEARPINS() {
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let rgPin = ss.getRange(pinCol + colStart + ":" + pinCol);
+  let numRows = rgPin.getNumRows();
+  let rule = SpreadsheetApp.newDataValidation().requireValueInList(["None"].concat(pinSet), true).build();
+  for (let i = 1; i <= numRows; i++) {
+    let cell = rgPin.getCell(i, 1);
+    cell.clearContent();
+    cell.clearDataValidations();
+    let row = colStart + i - 1;
+    let town = ss.getRange(locCol + row + ":" + locCol + row);
+    let value = town.getValue();
+  //  SpreadsheetApp.getUi().alert(value + " " + row);
+    if ((value != "" && value != null) ) {
+
+      cell.setDataValidation(rule);  
+      cell.setValue("None");
+    }
+    
+  }
+
+}
+
+// adds a dropdown to pin column
+function onEdit(e) {
+  let chgRange = e.range;
+   
+  let col = String.fromCharCode(64 + chgRange.getColumn());
+  if (col != locCol) {
+     return;
+  }
+  let row = chgRange.getRow();
+  let value = chgRange.getValue();
+  
+  var cell = SpreadsheetApp.getActiveSpreadsheet().getRange(pinCol + row + ":" + pinCol + row);  
+  if (value === "" || value === null) {  
+    cell.clearContent();
+    cell.clearDataValidations();
+    return;
+  } else {
+    if (cell.getDataValidation() === null) {
+      var rule = SpreadsheetApp.newDataValidation().requireValueInList(["None"].concat(pinSet), true).build();
+      cell.setDataValidation(rule);  
+      cell.setValue("None");
+      return;
+    }
+  }
+}
+// adds a dropdown allowing selection of point type
+function doDropdown( ) {
+  var cell = SpreadshreetApp.getActiveSpreadsheet().getRange(typeLoc + ":" + typeLoc);
+  var rule = SpreadsheetApp.newDataValidation().requireValueInList(routeSet, true).build();
+  cell.setDataValidation(rule);  
+  cell.setValue("route");
 }
 
 function COMPACT() {
@@ -61,8 +129,6 @@ function COMPACT() {
   let lrow =ss.getLastRow();
   for (var i = lrow; i > colStart; i--) {
     let test = ss.getRange(locCol + i + ":" + locCol + i).getValue();
-  //  SpreadsheetApp.getUi() // Or DocumentApp or FormApp.
-//     .alert(test);
     if (test === "") {
       ss.deleteRow(i);
     }
@@ -72,7 +138,7 @@ function COMPACT() {
 
 // clears the generated information
 function CLEARGEN() {
-  SpreadsheetApp.getActiveSpreadsheet().getRange(nameCol + colStart + ":" + ptCol).clearContent();
+  SpreadsheetApp.getActiveSpreadsheet().getRange(addrCol + colStart + ":" + ptCol).clearContent();
   CLEARRTE();
 }
 
@@ -110,6 +176,9 @@ function xmlHeader() {
 
 function setTags() {
   var tags = {};
+  let ss = SpreadsheetApp.getActiveSpreadsheet();
+  let routeType = ss.getRange(typeLoc + ":" + typeLoc).getValue().toString();
+  
   switch (routeType) {
     case "track":
       tags["start"] = startTRK;
@@ -150,7 +219,7 @@ function SAVE() {
   let parents = file.getParents();
   if (parents.hasNext()) {
     let folder = parents.next();
-    folder.createFile(name, route,"application/gpx+xml");    
+    folder.createFile(name, route, "application/gpx+xml");    
   } else {
     // we are running in root so put it there
     DriveApp.createFile(name, route, "application/gpx+xml");
@@ -204,15 +273,26 @@ function POINTS() {
   targets.forEach(function(row, index) {
     let town = row[0].toString();
     let level = index + colStart;
+
     let name = ss.getRange(nameCol + level + ":" + nameCol + level ).getValue();
+    if (name === "") {
+        name = ss.getRange(addrCol + level + ":" + addrCol + level ).getValue();
+    }
     if (name === "" ) {
       name = ss.getRange(locCol + level + ":" + locCol + level ).getValue();
     }
+ 
+    let pinVal = "";
+    let pinType = ss.getRange(pinCol + level + ":" + pinCol + level ).getValue();
+    if (pinType != "None") {
+        pinVal = "<sym>" + pinType + "</sym>";
+    }
+
     let lat = ss.getRange(latCol + level + ":" + latCol + level ).getValue();
     let lon = ss.getRange(lonCol + level + ":" + lonCol + level ).getValue();
     if ( lat != "" && lon != "" ) {
         let target = ss.getRange(ptCol + level + ":" + ptCol + level)
-        target.setValue(tags["ptstart"] + " lat=\"" + lat + "\" lon=\"" + lon +"\"> <name>" + name +"</name>" + tags["ptend"]);
+        target.setValue(tags["ptstart"] + " lat=\"" + lat + "\" lon=\"" + lon +"\"> <name>" + name +"</name>" + pinVal + tags["ptend"]);
     }
   });
 
@@ -226,11 +306,14 @@ function GEOCODE() {
   
   targets.forEach(function(row, index) {
     let town = row[0].toString();
+    if (town === "") {
+      return;
+    }
     let level = index + colStart;
     let state = ss.getRange(stateCol + level + ":" + stateCol + level ).getValue();
     var loc = callGeo(town, state);
     if ( Object.keys(loc).length > 0 ) {
-        ss.getRange(nameCol + level + ":" + nameCol + level).setValue(loc["display_name"]);
+        ss.getRange(addrCol + level + ":" + addrCol + level).setValue(loc["display_name"]);
         ss.getRange(latCol + level + ":" + latCol + level).setValue(loc["lat"]);
         ss.getRange(lonCol + level + ":" + lonCol + level).setValue(loc["lon"]);
     }
@@ -257,5 +340,4 @@ function callGeo(town, state) {
     return loc;
   }
 }
-
 
